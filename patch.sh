@@ -17,14 +17,14 @@ dpkg -X LinuxQQ.deb extract
 dpkg -e LinuxQQ.deb extract/DEBIAN
 
 # 补丁
-cp wrap.sh extract/opt/QQ
+cp -r __patch__ extract/opt/QQ
 (
     echo '';
     echo 'rm -f /usr/bin/qq';
-    echo 'cp /opt/QQ/wrap.sh /usr/bin/qq';
+    echo 'cp /opt/QQ/__patch__/wrap.sh /usr/bin/qq';
     echo 'chmod +x /usr/bin/qq';
 ) >> extract/DEBIAN/postinst
-sed -i -E 's@(Depends: .*)@\1, bubblewrap@' extract/DEBIAN/control
+sed -i -E 's@(Depends: .*)@\1, bubblewrap, python3@' extract/DEBIAN/control
 sed -i -E 's@(Name=.*)@Name=QQ Wrapper@' extract/usr/share/applications/qq.desktop
 sed -i -E 's@(Exec=.*)@Exec=/usr/bin/qq@' extract/usr/share/applications/qq.desktop
 
