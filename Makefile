@@ -4,7 +4,6 @@ LinuxQQ-patched.deb: LinuxQQ.deb clean extract patch
 	rm -f LinuxQQ-patched.deb
 	dpkg-deb --root-owner-group -b extract LinuxQQ-patched.deb
 	$(MAKE) clean
-	echo "Build Finished." > /dev/pts/0  # KDE 系统消息服务
 
 clean:
 	rm -rf extract
