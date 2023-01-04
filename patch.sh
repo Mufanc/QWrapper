@@ -29,7 +29,7 @@ sed -i -E 's@(Name=.*)@Name=QQ Wrapper@' extract/usr/share/applications/qq.deskt
 sed -i -E 's@(Exec=.*)@Exec=/usr/bin/qq@' extract/usr/share/applications/qq.desktop
 
 # 打包
-dpkg -b extract LinuxQQ-patched.deb
+dpkg-deb --root-owner-group -b extract LinuxQQ-patched.deb
 
 # 清理
 rm -rf extract
