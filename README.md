@@ -16,18 +16,12 @@
 sudo apt remove linuxqq
 ```
 
-* 运行重打包脚本
+* 打包 & 安装
 
 ```shell
 git clone https://github.com/Mufanc/QWrapper
 cd QWrapper
-sh patch.sh
-```
-
-* 安装生成的 deb 包
-
-```shell
-sudo apt install ./LinuxQQ-patched.deb
+make && make install
 ```
 
 ## 定制
