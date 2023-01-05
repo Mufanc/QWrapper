@@ -12,18 +12,13 @@
 
 ## 使用
 
-* 卸载原 Linux QQ
-
-```shell
-sudo apt remove linuxqq
-```
-
 * 打包 & 安装
 
-```shell
+```bash
 git clone https://github.com/Mufanc/QWrapper
 cd QWrapper
-make && make install
+make
+make install  # 注意：此操作会卸载原 Linux QQ
 ```
 
 ## 定制
