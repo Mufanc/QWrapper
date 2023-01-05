@@ -1,5 +1,7 @@
 # QWrapper
 
+[![repack](https://img.shields.io/github/actions/workflow/status/Mufanc/QWrapper/ci.yml?branch=master&label=repack)](https://github.com/Mufanc/QWrapper/actions)
+
 一款 Linux QQ 自动重打包工具，使用 [bubblewrap](https://github.com/containers/bubblewrap) 为其获取一定程度上的隔离
 
 ## 功能
