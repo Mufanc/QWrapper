@@ -91,7 +91,6 @@ int execvp(const char *path, char *argv[]) {
                 return backup_old(path, argv);
             }
         }
-        argv[1] = nullptr;
     }
 
     return backup_old(path, argv);
