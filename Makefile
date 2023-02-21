@@ -1,4 +1,4 @@
-.PHONY : clean extract patch install
+.PHONY : clean extract patch install hack
 
 LinuxQQ-patched.deb: LinuxQQ.deb clean extract __patch__/libhook.so patch
 	rm -f LinuxQQ-patched.deb
@@ -37,3 +37,6 @@ LinuxQQ.deb:
 install:
 	sudo apt purge linuxqq
 	sudo apt install ./LinuxQQ-patched.deb
+
+hack: __patch__/libhook.so
+	sudo cp __patch__/libhook.so /opt/QQ/__patch__
