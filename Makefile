@@ -27,6 +27,9 @@ patch:
 __patch__/libhook.so: hook.cpp
 	clang++ hook.cpp -fPIC -shared -o __patch__/libhook.so -std=gnu++17
 
+__patch__/daemon: daemon.cpp
+	clang++ daemon.cpp -o __patch__/daemon
+
 LinuxQQ.deb:
 	curl -o LinuxQQ.deb $$( \
 	    curl https://im.qq.com/rainbow/linuxQQDownload/ | \
@@ -38,5 +41,6 @@ install:
 	sudo apt purge linuxqq
 	sudo apt install ./LinuxQQ-patched.deb
 
-hack: __patch__/libhook.so
+hack: __patch__/libhook.so __patch__/daemon
 	sudo cp __patch__/libhook.so /opt/QQ/__patch__
+	sudo cp __patch__/daemon /opt/QQ/__patch__

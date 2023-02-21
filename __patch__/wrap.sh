@@ -1,5 +1,7 @@
 #!/usr/bin/sh
-exec bwrap --unshare-all --share-net \
+/opt/QQ/__patch__/daemon &
+PID=$!
+bwrap --unshare-all --share-net \
   --dev-bind / / \
   --proc /proc \
   --ro-bind "$HOME" "$HOME" \
@@ -9,3 +11,5 @@ exec bwrap --unshare-all --share-net \
   --setenv LD_PRELOAD /opt/QQ/__patch__/libhook.so \
   --chdir "$HOME" \
   /opt/QQ/qq
+kill -9 $PID
+echo "exited."
