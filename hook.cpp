@@ -58,17 +58,19 @@ int execvp(const char *path, char *argv[]) {
         backup_old = (Self) dlsym(handle, "execvp");
     }
 
+    bool trace_exec = (getenv("TRACE_EXEC") != nullptr);
     int argc = 0;
-    printf("execvp: ");
+    if (trace_exec) printf("execvp: ");
     for (char **ptr = argv; *ptr; ptr++) {
+        argc++;
+        if (!trace_exec) continue;
         if (ptr == argv) {
             printf("%s\n", *ptr);
         } else {
             printf("    %s\n", *ptr);
         }
-        argc++;
     }
-    printf("\n");
+    if (trace_exec) printf("\n");
 
     if (std::string_view(argv[0]) == "xdg-open" && argc >= 2) {
         const std::regex pattern(R"((?:https?://)?c.pc.qq.com/([^?#]*)\.html(?:\?([^#]*))?(?:#.*)?)");
