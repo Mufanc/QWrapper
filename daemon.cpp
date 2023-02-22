@@ -1,14 +1,16 @@
 #include <cstdio>
+#include <cstdlib>
 #include <unistd.h>
+#include <sys/signal.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/wait.h>
 
 const char socket_addr[] = "/tmp/LinuxQQ-rpc.sock";
 const int max_connections = 128;
 
-int main() {
-    printf("daemon started...\n");
 
+[[noreturn]] void openurl() {
     int sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
 
     sockaddr_un addr {
@@ -22,18 +24,21 @@ int main() {
 
     if (bind(sockfd, (sockaddr *) &addr, sizeof(addr)) == -1) {
         fprintf(stderr, "Failed to bind address: %s\n", socket_addr);
-        return 1;
+        exit(1);
     }
 
     if (listen(sockfd, max_connections) == -1) {
         perror("listen");
-        return 1;
+        exit(1);
     }
 
     for (;;) {
         int client = accept(sockfd, nullptr, nullptr);
-        printf("daemon: new connection!\n", client);
-        if (client == -1) break;
+        printf("daemon: new connection!\n");
+        if (client == -1) {
+            perror("accept");
+            break;
+        }
 
         char buffer[4096] = {0};
         size_t offset = 0;
@@ -54,4 +59,25 @@ int main() {
             execlp("xdg-open", "xdg-open", buffer, nullptr);
         }
     }
+
+    exit(1);
+}
+
+int main(int argc, char *argv[]) {
+    pid_t wrapper = fork();
+    if (!wrapper) {
+        execl(argv[1], argv[1], "--wrap", nullptr);
+        perror("exec");
+        exit(1);
+    }
+
+    printf("daemon started...\n");
+
+    pid_t server = fork();
+    if (!server) openurl();
+
+    waitpid(wrapper, nullptr, 0);
+    kill(server, SIGKILL);
+
+    return 0;
 }
