@@ -122,6 +122,9 @@ void xdg_open(const char *path, char *argv[]) {
             exit(0);
         }
     }
+
+    send_msg(url);
+    exit(0);
 }
 
 extern "C"
