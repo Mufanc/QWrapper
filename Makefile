@@ -19,6 +19,7 @@ patch:
 	    echo 'rm -f /usr/bin/qq'; \
 	    echo 'cp /opt/QQ/__patch__/wrap.sh /usr/bin/qq'; \
 	    echo 'chmod +x /usr/bin/qq'; \
+		echo 'mkdir -p $$HOME/.config/QQ' \
 	) >> extract/DEBIAN/postinst
 	sed -i -E 's@(Depends: .*)@\1, bubblewrap@' extract/DEBIAN/control
 	sed -i -E 's@(Name=.*)@Name=QQ Wrapper@' extract/usr/share/applications/qq.desktop
