@@ -1,18 +1,15 @@
-.PHONY : clean extract patch install hack
+.PHONY : clean extract patch install hotfix
 
-LinuxQQ-patched.deb: LinuxQQ.deb clean extract __patch__/libhook.so patch
+LinuxQQ-patched.deb: LinuxQQ.deb clean patch
 	rm -f LinuxQQ-patched.deb
 	dpkg-deb --root-owner-group -b extract LinuxQQ-patched.deb
 	$(MAKE) clean
-
-clean:
-	rm -rf extract
 
 extract:
 	dpkg -X LinuxQQ.deb extract
 	dpkg -e LinuxQQ.deb extract/DEBIAN
 
-patch:
+patch: extract __patch__/libhook.so __patch__/daemon
 	cp -r __patch__ extract/opt/QQ
 	( \
 	    echo ''; \
@@ -42,6 +39,10 @@ install:
 	sudo apt purge linuxqq
 	sudo apt install ./LinuxQQ-patched.deb
 
-hack: __patch__/libhook.so __patch__/daemon
+hotfix: __patch__/libhook.so __patch__/daemon
+	sudo cp __patch__/wrap.sh /usr/bin/qq
 	sudo cp __patch__/libhook.so /opt/QQ/__patch__
 	sudo cp __patch__/daemon /opt/QQ/__patch__
+
+clean:
+	rm -rf extract
