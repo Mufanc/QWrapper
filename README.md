@@ -21,6 +21,8 @@ make
 make install  # 注意：此操作会卸载原 Linux QQ
 ```
 
+[闪退问题](https://aur.archlinux.org/packages/linuxqq-nt-bwrap#comment-906014) 目前采用与 linuxqq-nt-bwrap 相同的 [Workaround 策略](https://aur.archlinux.org/cgit/aur.git/commit/?h=linuxqq-nt-bwrap&id=52d7eab4a3e70e1f2448919d4a6d2ad3f33a4d84)，但未添加依赖项，所以你可能需要手动安装 libvips 和 openslide
+
 ## 定制
 
 bwrap 启动命令放在项目 `__patch__` 目录下 [wrap.sh](./wrap.sh) 中，你可以修改此文件来定制自己的 bwrap 沙盒环境
