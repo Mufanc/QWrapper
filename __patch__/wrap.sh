@@ -1,6 +1,7 @@
 #!/usr/bin/sh
 if [ "$1" = "--wrap" ] ; then
     mkdir -p $HOME/.config/QQ
+    killall /opt/QQ/qq
     exec bwrap --unshare-all --share-net \
         --dev-bind / / \
         --proc /proc \
