@@ -9,7 +9,7 @@ extract: LinuxQQ.deb
 	dpkg -X LinuxQQ.deb extract
 	dpkg -e LinuxQQ.deb extract/DEBIAN
 
-patch: extract __patch__/libhook.so __patch__/daemon
+patch: extract __patch__/libhook.so __patch__/libhide.so __patch__/daemon
 	cp -r __patch__ extract/opt/QQ
 	( \
 	    echo ''; \
@@ -25,6 +25,9 @@ patch: extract __patch__/libhook.so __patch__/daemon
 __patch__/libhook.so: hook.cpp
 	${CXX} hook.cpp -fPIC -shared -o __patch__/libhook.so -std=gnu++17
 
+__patch__/libhide.so: hide.cpp
+	${CXX} hide.cpp -fPIC -shared -o __patch__/libhide.so
+
 __patch__/daemon: daemon.cpp
 	${CXX} daemon.cpp -o __patch__/daemon
 
@@ -39,9 +42,10 @@ install:
 	sudo apt purge linuxqq
 	sudo apt install ./LinuxQQ-patched.deb
 
-hotfix: __patch__/libhook.so __patch__/daemon
+hotfix: __patch__/libhook.so __patch__/libhide.so __patch__/daemon
 	sudo cp __patch__/wrap.sh /usr/bin/qq
 	sudo cp __patch__/libhook.so /opt/QQ/__patch__
+	sudo cp __patch__/libhide.so /opt/QQ/__patch__
 	sudo cp __patch__/daemon /opt/QQ/__patch__
 
 clean:

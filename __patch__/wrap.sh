@@ -9,6 +9,7 @@ if [ "$1" = "--wrap" ] ; then
         --bind "$HOME/Downloads" "$HOME/Downloads" \
         --tmpfs "$HOME/.config" \
         --setenv LD_PRELOAD /opt/QQ/__patch__/libhook.so \
+        --setenv HIDE_SONAME 1 \
         --tmpfs /opt/QQ/resources/app/sharp-lib \
         --chdir "$HOME" \
         /opt/QQ/qq

@@ -13,6 +13,14 @@ extern "C" int execvp(const char *path, char *argv[]);
 typedef decltype(&execvp) execvp_t;
 execvp_t execvp_old = nullptr;
 
+[[gnu::constructor]] void __init__() {
+    if (getenv("HIDE_SONAME") != nullptr) {
+        void *handle = dlopen("/opt/QQ/__patch__/libhide.so", RTLD_LAZY);
+        ((void (*)()) dlsym(handle, "hide_soname"))();
+        dlclose(handle);
+    }
+}
+
 
 int ctoi(char ch) {
     if ('0' <= ch && ch <= '9') {
