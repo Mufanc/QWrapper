@@ -7,7 +7,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-const char socket_addr[] = "/tmp/LinuxQQ-rpc.sock";
+const char socket_addr[] = "\0LinuxQQ-rpc";
 
 extern "C" int execvp(const char *path, char *argv[]);
 typedef decltype(&execvp) execvp_t;

@@ -6,7 +6,7 @@
 #include <sys/un.h>
 #include <sys/wait.h>
 
-const char socket_addr[] = "/tmp/LinuxQQ-rpc.sock";
+const char socket_addr[] = "\0LinuxQQ-rpc";
 const int max_connections = 128;
 
 
@@ -18,12 +18,8 @@ const int max_connections = 128;
     };
     strncpy(addr.sun_path, socket_addr, sizeof(socket_addr));
 
-    if (access(socket_addr, F_OK) == 0) {
-        unlink(socket_addr);
-    }
-
     if (bind(sockfd, (sockaddr *) &addr, sizeof(addr)) == -1) {
-        fprintf(stderr, "Failed to bind address: %s\n", socket_addr);
+        fprintf(stderr, "failed to bind!\n");
         exit(1);
     }
 
