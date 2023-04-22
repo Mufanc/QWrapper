@@ -8,7 +8,6 @@ if [ "$1" = "--wrap" ] ; then
         --ro-bind "$HOME" "$HOME" \
         --bind "$HOME/Downloads" "$HOME/Downloads" \
         --tmpfs "$HOME/.config" \
-        --bind "$HOME/.config/QQ" "$HOME/.config/QQ" \
         --setenv LD_PRELOAD /opt/QQ/__patch__/libhook.so \
         --tmpfs /opt/QQ/resources/app/sharp-lib \
         --chdir "$HOME" \
