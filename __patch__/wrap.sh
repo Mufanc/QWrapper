@@ -8,6 +8,8 @@ if [ "$1" = "--wrap" ] ; then
         --ro-bind "$HOME" "$HOME" \
         --bind "$HOME/Downloads" "$HOME/Downloads" \
         --tmpfs "$HOME/.config" \
+        --bind "$HOME/.config/QQ" "$HOME/.config/QQ" \
+        --tmpfs "$HOME/.config/QQ/crash_files" \
         --setenv LD_PRELOAD /opt/QQ/__patch__/libhook.so \
         --setenv HIDE_SONAME 1 \
         --tmpfs /opt/QQ/resources/app/sharp-lib \
