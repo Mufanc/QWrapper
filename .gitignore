@@ -1,2 +1,5 @@
-*.deb
-extract
+/*.deb
+/*.tar.zst
+/PKGBUILD
+/pkg
+/src

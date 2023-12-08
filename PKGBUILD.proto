@@ -1,0 +1,33 @@
+# Maintainer: Mufanc <mufanc.xyz@gmail.com>
+
+pkgname=qwrapper
+pkgver='$PKGVER'
+pkgrel=1
+pkgdesc='为 Linux QQ 提供基本的存储隔离，同时集成一些其它小功能'
+arch=('x86_64')
+url='https://github.com/Mufanc/QWrapper'
+license=('custom')
+depends=('gtk3' 'libnotify' 'nss' 'libxss' 'libxtst' 'xdg-utils' 'at-spi2-core' 'util-linux-libs' 'libsecret')
+makedepends=()
+optdepends=('libappindicator-gtk3')
+conflicts=('linuxqq')
+source=('$SOURCE' 'launcher.sh')
+sha256sums=()
+
+package() {
+	# 解包
+	tar -x --xz -f data.tar.xz --directory="$pkgdir"
+
+	# 替换入口
+	mv "$pkgdir/opt/QQ/qq" "$pkgdir/opt/QQ/main"
+	cp "$srcdir/launcher.sh" "$pkgdir/opt/QQ/qq"
+
+	# 处理 crash
+	res="$pkgdir/opt/QQ/resources/app"
+	rm "$res"/libssh*
+	rm "$res"/libunwind*
+	rm "$res"/sharp-lib/*
+
+	# 替换 desktop 名称
+	sed -i -E "s#(Name=.*)#Name=QQ (wrap)#" "$pkgdir/usr/share/applications/qq.desktop"
+}
