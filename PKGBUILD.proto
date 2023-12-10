@@ -8,31 +8,41 @@ arch=('x86_64')
 url='https://github.com/Mufanc/QWrapper'
 license=('custom')
 depends=(
-		# 默认依赖
-		'gtk3' 'libnotify' 'nss' 'libxss' 'libxtst' 'xdg-utils' 'at-spi2-core' 'util-linux-libs' 'libsecret' 
-		# 移除问题库后补的依赖
-		'libvips' 'libunwind' 'libssh2'
-	)
-makedepends=()
+        # 默认依赖
+        'gtk3' 'libnotify' 'nss' 'libxss' 'libxtst' 'xdg-utils' 'at-spi2-core' 'util-linux-libs' 'libsecret' 
+        # 移除问题库后补的依赖
+        'libvips' 'libunwind' 'libssh2'
+    )
+makedepends=('rust')
 optdepends=('libappindicator-gtk3')
 conflicts=('linuxqq')
 source=('$SOURCE' 'launcher.sh')
 sha256sums=()
 
+build() {
+    cd "$PKGROOT/daemon"
+    cargo build --release
+
+    cd "$PKGROOT/inject"
+    cargo build --release
+}
+
 package() {
-	# 解包
-	tar -x --xz -f data.tar.xz --directory="$pkgdir"
+    # 解包
+    tar -x --xz -f data.tar.xz --directory="$pkgdir"
 
-	# 替换入口
-	mv "$pkgdir/opt/QQ/qq" "$pkgdir/opt/QQ/main"
-	cp "$srcdir/launcher.sh" "$pkgdir/opt/QQ/qq"
+    # 替换入口
+    mv "$pkgdir/opt/QQ/qq" "$pkgdir/opt/QQ/main"
+    cp "$srcdir/launcher.sh" "$pkgdir/opt/QQ/launcher.sh"
+    cp "$PKGROOT/daemon/target/release/daemon" "$pkgdir/opt/QQ/qq"
+    cp "$PKGROOT/inject/target/release/libinject.so" "$pkgdir/opt/QQ/libinject.so"
 
-	# 处理 crash
-	res="$pkgdir/opt/QQ/resources/app"
-	rm "$res"/libssh*
-	rm "$res"/libunwind*
-	rm "$res"/sharp-lib/*
+    # 处理 crash
+    res="$pkgdir/opt/QQ/resources/app"
+    rm "$res"/libssh*
+    rm "$res"/libunwind*
+    rm "$res"/sharp-lib/*
 
-	# 替换 desktop 名称
-	sed -i -E "s#(Name=.*)#Name=QQ (wrap)#" "$pkgdir/usr/share/applications/qq.desktop"
+    # 替换 desktop 名称
+    sed -i -E "s#(Name=.*)#Name=QQ (wrap)#" "$pkgdir/usr/share/applications/qq.desktop"
 }
