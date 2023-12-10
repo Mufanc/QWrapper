@@ -2,10 +2,10 @@
 
 use std::fs;
 use std::fs::Metadata;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::os::fd::{AsRawFd, OwnedFd};
 use std::os::unix::fs::MetadataExt;
-use std::os::unix::net::UnixListener;
+use std::os::unix::net::{UCred, UnixListener, UnixStream};
 use std::process::{Command, exit};
 use std::thread::sleep;
 use std::time::Duration;
@@ -13,10 +13,11 @@ use std::time::Duration;
 use anyhow::{bail, Result};
 use nix::{libc, unistd};
 use nix::errno::Errno;
-use nix::sys::prctl;
+use nix::sys::{prctl, signal};
 use nix::sys::signal::Signal;
 use nix::sys::socket;
-use nix::sys::socket::{AddressFamily, MsgFlags, SockFlag, SockType, UnixAddr};
+use nix::sys::socket::{AddressFamily, SockFlag, SockType, UnixAddr};
+use nix::unistd::Pid;
 
 mod configs;
 
@@ -29,15 +30,21 @@ fn bind_server(fd: &OwnedFd) -> Result<()> {
             bail!(err);
         }
 
-        eprintln!("address already in use, stop old daemon and retry...");
+        eprintln!("address already in use, kill old daemon and retry...");
 
         let client = socket::socket(AddressFamily::Unix, SockType::Stream, SockFlag::empty(), None)?;
         let client_raw = client.as_raw_fd();
 
         socket::connect(client_raw, addr)?;
-        socket::send(client_raw, "@exit".as_bytes(), MsgFlags::empty())?;
 
-        drop(client);  // close fd
+        let mut stream = UnixStream::from(client);
+
+        if let Ok(UCred { pid: Some(pid), .. }) = stream.peer_cred() {
+            signal::killpg(Pid::from_raw(pid), Signal::SIGKILL)?;
+        } else {
+            stream.write_all("@exit".as_bytes())?;
+            drop(stream);
+        }
 
         sleep(Duration::from_secs(1));
 

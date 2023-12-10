@@ -5,9 +5,6 @@ LITELOADER="$HOME/.config/QQ/LiteLoaderQQNT"
 
 mkdir -p "$HOME/.config/QQ"
 
-killall /opt/QQ/qq 2>/dev/null
-killall /opt/QQ/main 2>/dev/null
-
 args=""
 args="$args --unshare-all --share-net"                                       # 分离命名空间（主要是 /proc 隔离）
 args="$args --dev-bind / /"                                                  # 挂载根目录
