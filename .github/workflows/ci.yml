@@ -2,7 +2,7 @@ name: Build CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [ archlinux ]
     paths-ignore:
       - '**.md'
   workflow_dispatch:
@@ -19,12 +19,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Repack Linux-QQ
-        run: make
+      - name: Setup Arch
+        uses: docker://archlinux:latest
+        with:
+          entrypoint: /bin/bash
+          args: .github/workflows/scripts/ci.sh
+
+      - name: Prepare Artifact
+        id: prepare_artifact
+        run: |
+          echo "name=$(echo qwrapper*.pkg* | sed 's/.pkg.*//')" >> $GITHUB_OUTPUT
 
       - name: Upload Artifact
         if: success()
         uses: actions/upload-artifact@v3
         with:
-          name: LinuxQQ-patched.deb
-          path: LinuxQQ-patched.deb
+          name: ${{ steps.prepare_artifact.outputs.name }}
+          path: |
+            PKGBUILD
+            qwrapper*.pkg.*
