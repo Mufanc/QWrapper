@@ -18,11 +18,11 @@ use nix::sys::signal::Signal;
 use nix::sys::socket;
 use nix::sys::socket::{AddressFamily, MsgFlags, SockFlag, SockType, UnixAddr};
 
-const BIND_ADDRESS: &str = "qwrapper-daemon";
+mod configs;
 
 
 fn bind_server(fd: &OwnedFd) -> Result<()> {
-    let addr = &UnixAddr::new_abstract(BIND_ADDRESS.as_bytes())?;
+    let addr = &UnixAddr::new_abstract(configs::SERVER_ADDRESS.as_bytes())?;
 
     if let Err(err) = socket::bind(fd.as_raw_fd(), addr) {
         if err != Errno::EADDRINUSE {
@@ -86,7 +86,7 @@ fn main() -> Result<()> {
     bind_server(&fd)?;
 
     let listener = UnixListener::from(fd);
-    println!("daemon is listening on @{BIND_ADDRESS}");
+    println!("daemon is listening on @{}", configs::SERVER_ADDRESS);
 
     prctl::set_pdeathsig(Signal::SIGKILL)?;
 

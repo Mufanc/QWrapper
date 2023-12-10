@@ -22,9 +22,6 @@ sha256sums=()
 build() {
     cd "$PKGROOT/daemon"
     cargo build --release
-
-    cd "$PKGROOT/inject"
-    cargo build --release
 }
 
 package() {
@@ -35,7 +32,7 @@ package() {
     mv "$pkgdir/opt/QQ/qq" "$pkgdir/opt/QQ/main"
     cp "$srcdir/launcher.sh" "$pkgdir/opt/QQ/launcher.sh"
     cp "$PKGROOT/daemon/target/release/daemon" "$pkgdir/opt/QQ/qq"
-    cp "$PKGROOT/inject/target/release/libinject.so" "$pkgdir/opt/QQ/libinject.so"
+    cp "$PKGROOT/daemon/target/release/libinject.so" "$pkgdir/opt/QQ/libinject.so"
 
     # 处理 crash
     res="$pkgdir/opt/QQ/resources/app"

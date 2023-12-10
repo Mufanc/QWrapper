@@ -3,6 +3,19 @@ name = "daemon"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "inject"
+crate-type = ["cdylib"]
+path = "src/inject.rs"
+
+[[bin]]
+name = "daemon"
+path = "src/daemon.rs"
+
 [dependencies]
 anyhow = "1.0.75"
+ctor = "0.2.5"
+goblin = "0.7.1"
 nix = { version = "0.27.1", features = ["socket", "process"] }
+once_cell = "1.19.0"
+url = "2.5.0"

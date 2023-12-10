@@ -16,9 +16,10 @@ use once_cell::sync::Lazy;
 use url::Url;
 
 mod dlopt;
+mod configs;
 
 static SERVER_ADDRESS: Lazy<UnixAddr> = Lazy::new(|| {
-    UnixAddr::new_abstract("qwrapper-daemon".as_bytes()).unwrap()
+    UnixAddr::new_abstract(configs::SERVER_ADDRESS.as_bytes()).unwrap()
 });
 
 
