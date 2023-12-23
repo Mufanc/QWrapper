@@ -8,6 +8,8 @@ arch=('x86_64')
 url='https://github.com/Mufanc/QWrapper'
 license=('custom')
 depends=(
+        # 沙盒
+        'bubblewrap'
         # 默认依赖
         'gtk3' 'libnotify' 'nss' 'libxss' 'libxtst' 'xdg-utils' 'at-spi2-core' 'util-linux-libs' 'libsecret' 
         # 移除问题库后补的依赖
