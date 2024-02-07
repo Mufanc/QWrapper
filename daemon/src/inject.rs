@@ -12,9 +12,11 @@ use anyhow::Result;
 use ctor::ctor;
 use goblin::elf::dynamic::DT_NEEDED;
 use goblin::elf::Elf;
+use log::{debug, error, info};
 use nix::libc::{c_int, RTLD_LAZY};
 use nix::sys::socket;
 use nix::sys::socket::{AddressFamily, SockFlag, SockType, UnixAddr};
+use nix::unistd::getpid;
 use once_cell::sync::Lazy;
 use tokio::io::AsyncWriteExt;
 use tokio::net::UnixStream;
@@ -27,7 +29,9 @@ mod dlopt;
 mod configs;
 
 static SERVER_ADDRESS: Lazy<UnixAddr> = Lazy::new(|| {
-    UnixAddr::new_abstract(configs::server_address().as_bytes()).unwrap()
+    let address = configs::server_address();
+    info!("daemon address: {address}");
+    UnixAddr::new_abstract(address.as_bytes()).unwrap()
 });
 
 static ASYNC_RUNTIME: Lazy<Runtime> = Lazy::new(|| {
@@ -77,7 +81,7 @@ fn open_url(url: &str) -> Result<()> {
         };
 
         if let Err(e) = result {
-            eprintln!("failed to open link: {e}");
+            error!("failed to open link: {e}");
         }
     });
 
@@ -93,13 +97,23 @@ fn handle_open(argv: *const *const c_char) {
             .ok()
             .and_then(|url| Url::parse(url).ok())
             .and_then(|url| {
-                match url.domain() {
+                let new_url = match url.domain() {
                     Some("c.pc.qq.com") => {
                         let queries: HashMap<_, _> = url.query_pairs().into_owned().collect();
                         queries.get("pfurl").or(queries.get("url")).cloned()
                     }
                     _ => Some(url.to_string())
+                };
+
+                if let Some(new_url) = &new_url {
+                    if url.as_str() != new_url {
+                        debug!("transform url: {url} -> {new_url}");
+                    } else {
+                        debug!("open url: {url} (not changed)");
+                    }
                 }
+
+                new_url
             })
             .and_then(|url| open_url(&url).ok());
     }
@@ -117,20 +131,21 @@ pub fn execvp(file: *const c_char, argv: *const *const c_char) -> c_int {
     static real_execvp: Lazy<ExecvpFn> = Lazy::new(|| {
         let libc = find_libc().unwrap();
 
-        println!("found libc: {libc}");
+        debug!("found libc: {libc}");
 
         let handle = dlopt::dlopen(&libc, RTLD_LAZY).unwrap();
         let execvp = dlopt::dlsym(handle, "execvp").unwrap();
 
-        println!("found execvp: {execvp:?}");
+        debug!("found execvp: {execvp:?}");
 
         unsafe { mem::transmute(execvp) }
     });
 
-    unsafe {
-        if CStr::from_ptr(file).to_str() == Ok("xdg-open") {
-            handle_open(argv);
-        }
+    let pathname = unsafe { CStr::from_ptr(file).to_str() };
+
+    if let Ok("xdg-open") = pathname {
+        info!("xdg-open detected, redirecting...");
+        handle_open(argv);
     }
 
     real_execvp(file, argv)
@@ -139,5 +154,6 @@ pub fn execvp(file: *const c_char, argv: *const *const c_char) -> c_int {
 
 #[ctor]
 fn main() {
-    println!("injected!");
+    env_logger::init();
+    info!("injected into process {} in container", getpid());
 }

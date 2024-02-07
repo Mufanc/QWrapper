@@ -2,16 +2,15 @@ use std::env;
 use nix::unistd::getpid;
 use crate::configs::Operation::OpenLink;
 
-const DAEMON_ADDRESS_ENV: &str = "QWRAPPER_DAEMON";
-const DAEMON_ADDRESS_PREFIX: &str = "qwrapper-daemon-";
+pub const DAEMON_ADDRESS_ENV: &str = "QWRAPPER_DAEMON";
+pub const DAEMON_ADDRESS_PREFIX: &str = "qwrapper-daemon-";
 
 
 pub fn server_address() -> String {
     if let Ok(addr) = env::var(DAEMON_ADDRESS_ENV) {
         addr
     } else {
-        env::set_var(DAEMON_ADDRESS_ENV, format!("{}{}", DAEMON_ADDRESS_PREFIX, getpid()));
-        server_address()
+        format!("{}{}", DAEMON_ADDRESS_PREFIX, getpid())
     }
 }
 
