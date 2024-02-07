@@ -22,18 +22,16 @@ else
 fi
 
 if [ -d "$LITELOADER" ]; then                                                # 支持 LiteLoaderQQNT
-    profile="$HOME/.config/LiteLoaderQQNT"                                   # 修改配置目录
-    mkdir -p "$profile"
-    args="$args --bind $profile $profile"
-    args="$args --setenv LITELOADERQQNT_PROFILE $profile"
+    mkdir -p "$LITELOADER"
+    args="$args --bind $LITELOADER $LITELOADER"
 
-    entry="$BASE/resources/app/package.json"
+    entry="$BASE/resources/app/app_launcher/index.js"
     fake_entry=$(mktemp)
-    sed 's#./app_launcher/index.js#../LiteLoader#' "$entry" > "$fake_entry"  # 替换入口点
 
-    args="$args --tmpfs $BASE/resources"                                     # 需要挂 tmpfs 否则下步无权创建文件夹
-    args="$args --bind $BASE/resources/app $BASE/resources/app"              # 挂回 app 目录
-    args="$args --bind $LITELOADER $BASE/resources/LiteLoader"               # 挂载插件目录
+    echo "require('$LITELOADER');" >> "$fake_entry"
+    cat "$entry" >> "$fake_entry"
+
+    args="$args --tmpfs $BASE/resources/app/application"                     # 挂载一个可写的 tmpfs
     args="$args --bind $fake_entry $entry"                                   # 挂载假入口
 fi
 
