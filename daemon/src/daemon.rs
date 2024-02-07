@@ -1,135 +1,97 @@
-#![feature(peer_credentials_unix_socket)]
+use std::os::fd::AsRawFd;
+use std::os::unix::net::UnixListener as SystemUnixListener;
 
-use std::fs;
-use std::fs::Metadata;
-use std::io::{Read, Write};
-use std::os::fd::{AsRawFd, OwnedFd};
-use std::os::unix::fs::MetadataExt;
-use std::os::unix::net::{UCred, UnixListener, UnixStream};
-use std::process::{Command, exit};
-use std::thread::sleep;
-use std::time::Duration;
-
-use anyhow::{bail, Result};
-use nix::{libc, unistd};
-use nix::errno::Errno;
-use nix::sys::{prctl, signal};
-use nix::sys::signal::Signal;
-use nix::sys::socket;
+use anyhow::Result;
+use nix::sys::{signal, socket};
 use nix::sys::socket::{AddressFamily, SockFlag, SockType, UnixAddr};
-use nix::unistd::Pid;
+use nix::unistd;
+use tokio::io::AsyncReadExt;
+use tokio::net::{UnixListener, UnixStream};
+use tokio::process::Command;
+
+use crate::configs::Operation;
 
 mod configs;
 
 
-fn bind_server(fd: &OwnedFd) -> Result<()> {
-    let addr = &UnixAddr::new_abstract(configs::SERVER_ADDRESS.as_bytes())?;
+trait BindAbstract<A : AsRef<str>> {
+    fn bind_abstract(addr: A) -> Result<UnixListener>;
+}
 
-    if let Err(err) = socket::bind(fd.as_raw_fd(), addr) {
-        if err != Errno::EADDRINUSE {
-            bail!(err);
-        }
+impl<A : AsRef<str>> BindAbstract<A> for UnixListener {
+    fn bind_abstract(addr: A) -> Result<UnixListener> {
+        let fd = socket::socket(AddressFamily::Unix, SockType::Stream, SockFlag::empty(), None)?;
+        let addr = &UnixAddr::new_abstract(addr.as_ref().as_bytes())?;
 
-        eprintln!("address already in use, kill old daemon and retry...");
+        socket::bind(fd.as_raw_fd(), addr)?;
+        socket::listen(&fd, 16)?;
 
-        let client = socket::socket(AddressFamily::Unix, SockType::Stream, SockFlag::empty(), None)?;
-        let client_raw = client.as_raw_fd();
-
-        socket::connect(client_raw, addr)?;
-
-        let mut stream = UnixStream::from(client);
-
-        if let Ok(UCred { pid: Some(pid), .. }) = stream.peer_cred() {
-            signal::killpg(Pid::from_raw(pid), Signal::SIGKILL)?;
-        } else {
-            stream.write_all("@exit".as_bytes())?;
-            drop(stream);
-        }
-
-        sleep(Duration::from_secs(1));
-
-        return bind_server(fd);
+        let sys = SystemUnixListener::from(fd);
+        
+        Ok(UnixListener::from_std(sys)?)
     }
+}
 
-    socket::listen(&fd, 16)?;
+
+async fn handle_client(mut client: UnixStream) -> Result<()> {
+    // let remote_pid = client.peer_cred()
+    //     .ok()
+    //     .and_then(|c| c.pid())
+    //     .unwrap();
+
+    let op = Operation::from(client.read_i32().await?);
+
+    match op {
+        Operation::OpenLink => {
+            let mut url = String::new();
+
+            client.read_to_string(&mut url).await?;
+            Command::new("xdg-open").arg(url).status().await?;
+        }
+    }
 
     Ok(())
 }
 
 
-fn verify_ns(proc: Option<libc::pid_t>) -> bool {
-    if proc.is_none() {
-        return false
-    }
+async fn run_server() -> Result<()> {
+    let listener = UnixListener::bind_abstract(configs::server_address())?;
 
-    fn get_ns(id: libc::pid_t) -> Option<Metadata> {
-        fs::metadata(format!("/proc/{id}/ns/pid")).ok()
-    }
-
-    let remote = get_ns(proc.unwrap());
-    let local = get_ns(unistd::getpid().as_raw());
-
-    match (remote, local) {
-        (Some(remote), Some(local)) => {
-            remote.dev() == local.dev() && remote.ino() == local.ino()
-        }
-        _ => false
-    }
-}
-
-
-fn super_command(cmd: &str) {
-    match cmd {
-        "@exit" => exit(0),
-        "@example" => println!("example"),
-        _ => ()
-    }
-}
-
-
-fn main() -> Result<()> {
-    let fd = socket::socket(AddressFamily::Unix, SockType::Stream, SockFlag::empty(), None)?;
-
-    bind_server(&fd)?;
-
-    let listener = UnixListener::from(fd);
-    println!("daemon is listening on @{}", configs::SERVER_ADDRESS);
-
-    prctl::set_pdeathsig(Signal::SIGKILL)?;
-
-    let mut command = Command::new("/opt/QQ/launcher.sh");
-    let mut child = command.spawn()?;
-
-    for stream in listener.incoming() {
-        match stream {
-            Ok(mut client) => {
-                let remote_pid = client.peer_cred()
-                    .ok()
-                    .and_then(|c| c.pid);
-
-                let mut data = String::new();
-                match client.read_to_string(&mut data) {
-                    Ok(_) => {
-                        #[allow(clippy::collapsible_else_if)]
-                        if data.starts_with('@') && verify_ns(remote_pid) {
-                            super_command(&data);
-                        } else {
-                            if let Err(err) = Command::new("xdg-open").arg(data).status() {
-                                eprintln!("{err}");
-                            }
-                        }
-                    }
-                    Err(err) => eprintln!("error while receiving url: {err}")
+    loop {
+        match listener.accept().await {
+            Ok((client, _)) => {
+                if let Err(e) = handle_client(client).await {
+                    eprintln!("error while handling client: {e}");
                 }
             }
-            Err(err) => {
-                eprintln!("error while accepting connection: {err}");
+            Err(e) => {
+                eprintln!("error while accepting connection: {e}");
                 break
             }
         }
     }
 
-    child.kill()?;
+    Ok(())
+}
+
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let server = tokio::spawn(async {
+        run_server().await.expect("failed to run server!");
+    });
+
+    let mut command = Command::new("/opt/QQ/launcher.sh");
+    let mut child = command.spawn()?;
+
+    child.wait().await?;
+
+    tokio::select! {
+        _ = child.wait() => (),
+        _ = server => (),
+    }
+
+    signal::killpg(unistd::getpid(), signal::SIGKILL)?;
 
     Ok(())
 }

@@ -30,7 +30,7 @@ pub fn dlsym(handle: Handle, symbol: &str) -> Result<*mut c_void> {
 
         if addr.is_null() {
             let error = CStr::from_ptr(libc::dlerror()).to_str()?;
-            anyhow::bail!("failed to dlsym for `{symbol}`: {error}");
+            anyhow::bail!("failed to dlsym for `{symbol}` in {}: {error}", handle.0);
         }
 
         Ok(addr)

@@ -1,8 +1,11 @@
+#![feature(try_blocks)]
+
 use std::{fs, mem};
 use std::collections::HashMap;
 use std::ffi::{c_char, CStr};
 use std::ops::Deref;
 use std::os::fd::AsRawFd;
+use std::os::unix::net::UnixStream as SystemUnixStream;
 use std::process::exit;
 
 use anyhow::Result;
@@ -11,15 +14,24 @@ use goblin::elf::dynamic::DT_NEEDED;
 use goblin::elf::Elf;
 use nix::libc::{c_int, RTLD_LAZY};
 use nix::sys::socket;
-use nix::sys::socket::{AddressFamily, MsgFlags, SockFlag, SockType, UnixAddr};
+use nix::sys::socket::{AddressFamily, SockFlag, SockType, UnixAddr};
 use once_cell::sync::Lazy;
+use tokio::io::AsyncWriteExt;
+use tokio::net::UnixStream;
+use tokio::runtime::Runtime;
 use url::Url;
+
+use crate::configs::Operation;
 
 mod dlopt;
 mod configs;
 
 static SERVER_ADDRESS: Lazy<UnixAddr> = Lazy::new(|| {
-    UnixAddr::new_abstract(configs::SERVER_ADDRESS.as_bytes()).unwrap()
+    UnixAddr::new_abstract(configs::server_address().as_bytes()).unwrap()
+});
+
+static ASYNC_RUNTIME: Lazy<Runtime> = Lazy::new(|| {
+    Runtime::new().unwrap()
 });
 
 
@@ -54,7 +66,22 @@ fn open_url(url: &str) -> Result<()> {
     let client_raw = client.as_raw_fd();
 
     socket::connect(client_raw, SERVER_ADDRESS.deref())?;
-    socket::send(client_raw, url.as_bytes(), MsgFlags::empty())?;
+
+    let url_owned = url.to_owned();
+    let future = ASYNC_RUNTIME.spawn(async move {
+        let result: Result<()> = try {
+            let mut stream = UnixStream::from_std(SystemUnixStream::from(client))?;
+
+            stream.write_i32(Operation::OpenLink.into()).await?;
+            stream.write_all(url_owned.as_bytes()).await?;
+        };
+
+        if let Err(e) = result {
+            eprintln!("failed to open link: {e}");
+        }
+    });
+
+    ASYNC_RUNTIME.block_on(future)?;
 
     Ok(())
 }
