@@ -21,10 +21,11 @@ make
 pacman -U qwrapper*.pkg.*
 ```
 
-## 定制
-
-bwrap 命令放在 [launcher.sh](./launcher.sh) 中，将被安装到 `/opt/QQ/launcher.sh` 你可以修改此文件来定制自己的 bwrap 沙盒环境
-
 ## LiteLoaderQQNT
 
 只需将 [LiteLoaderQQNT](https://github.com/LiteLoaderQQNT/LiteLoaderQQNT) 项目 clone 到 `~/.config/QQ/LiteLoaderQQNT`，即可在启动时自动加载
+
+
+## 定制
+
+bwrap 命令放在 [launcher.sh](./launcher.sh) 中，将被安装到 `/opt/QQ/launcher.sh` 你可以修改此文件来定制自己的 bwrap 沙盒环境
