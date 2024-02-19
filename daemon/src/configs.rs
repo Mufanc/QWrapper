@@ -1,6 +1,5 @@
 use std::env;
 use nix::unistd::getpid;
-use crate::configs::Operation::OpenLink;
 
 pub const DAEMON_ADDRESS_ENV: &str = "QWRAPPER_DAEMON";
 pub const DAEMON_ADDRESS_PREFIX: &str = "qwrapper-daemon-";
@@ -16,13 +15,13 @@ pub fn server_address() -> String {
 
 
 pub enum Operation {
-    OpenLink = 0
+    OpenFileOrLink = 0
 }
 
 impl From<i32> for Operation {
     fn from(value: i32) -> Self {
         match value {
-            0 => OpenLink,
+            0 => Self::OpenFileOrLink,
             _ => panic!("invalid value: {value}")
         }
     }
@@ -31,7 +30,7 @@ impl From<i32> for Operation {
 impl Into<i32> for Operation {
     fn into(self) -> i32 {
         match self {
-            OpenLink => 0
+            Self::OpenFileOrLink => 0,
         }
     }
 }

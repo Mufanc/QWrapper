@@ -65,7 +65,7 @@ fn find_libc() -> Result<String> {
 }
 
 
-fn open_url(url: &str) -> Result<()> {
+fn do_open(url: &str) -> Result<()> {
     let client = socket::socket(AddressFamily::Unix, SockType::Stream, SockFlag::empty(), None)?;
     let client_raw = client.as_raw_fd();
 
@@ -76,12 +76,12 @@ fn open_url(url: &str) -> Result<()> {
         let result: Result<()> = try {
             let mut stream = UnixStream::from_std(SystemUnixStream::from(client))?;
 
-            stream.write_i32(Operation::OpenLink.into()).await?;
+            stream.write_i32(Operation::OpenFileOrLink.into()).await?;
             stream.write_all(url_owned.as_bytes()).await?;
         };
 
         if let Err(e) = result {
-            error!("failed to open link: {e}");
+            error!("failed to open: {e}");
         }
     });
 
@@ -91,31 +91,32 @@ fn open_url(url: &str) -> Result<()> {
 }
 
 
-fn handle_open(argv: *const *const c_char) {
-    unsafe {
-        CStr::from_ptr(*argv.add(1)).to_str()
-            .ok()
-            .and_then(|url| Url::parse(url).ok())
-            .and_then(|url| {
-                let new_url = match url.domain() {
-                    Some("c.pc.qq.com") => {
-                        let queries: HashMap<_, _> = url.query_pairs().into_owned().collect();
-                        queries.get("pfurl").or(queries.get("url")).cloned()
-                    }
-                    _ => Some(url.to_string())
-                };
-
-                if let Some(new_url) = &new_url {
-                    if url.as_str() != new_url {
-                        debug!("transform url: {url} -> {new_url}");
-                    } else {
-                        debug!("open url: {url} (not changed)");
-                    }
+fn handle_open(args: &[&str]) {
+    let target = Url::parse(args[1])
+        .ok()
+        .and_then(|url| {
+            let new_url = match url.domain() {
+                Some("c.pc.qq.com") => {
+                    let queries: HashMap<_, _> = url.query_pairs().into_owned().collect();
+                    queries.get("pfurl").or(queries.get("url")).cloned()
                 }
+                _ => Some(url.to_string())
+            };
 
-                new_url
-            })
-            .and_then(|url| open_url(&url).ok());
+            if let Some(new_url) = &new_url {
+                if url.as_str() != new_url {
+                    debug!("transform url: {url} -> {new_url}");
+                } else {
+                    debug!("open url: {url} (not changed)");
+                }
+            }
+
+            new_url
+        })
+        .unwrap_or(args[1].to_owned());
+
+    if let Err(e) = do_open(&target) {
+        error!("failed to open [{}]: {}", args.join(", "), e);
     }
 
     exit(0);
@@ -145,7 +146,23 @@ pub fn execvp(file: *const c_char, argv: *const *const c_char) -> c_int {
 
     if let Ok("xdg-open") = pathname {
         info!("xdg-open detected, redirecting...");
-        handle_open(argv);
+
+        let mut args: Vec<&str> = vec![];
+        let mut ptr: *const *const c_char = argv;
+        let mut index = 0;
+
+        unsafe {
+            while !(*ptr).is_null() {
+                let arg = CStr::from_ptr(*ptr).to_str().expect(&format!("failed to decode argv[{index}]"));
+                args.push(arg);
+                ptr = ptr.add(1);
+                index += 1;
+            }
+        }
+
+        debug!("{}", args.join(" "));
+
+        handle_open(&args);
     }
 
     real_execvp(file, argv)

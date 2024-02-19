@@ -43,7 +43,7 @@ async fn handle_client(mut client: UnixStream) -> Result<()> {
     let op = Operation::from(client.read_i32().await?);
 
     match op {
-        Operation::OpenLink => {
+        Operation::OpenFileOrLink => {
             let mut url = String::new();
 
             client.read_to_string(&mut url).await?;
