@@ -43,5 +43,5 @@ package() {
     rm "$res"/sharp-lib/*
 
     # 替换 desktop 名称
-    sed -i -E "s#(Name=.*)#Name=QQ (wrap)#" "$pkgdir/usr/share/applications/qq.desktop"
+    sed -i -E "s#(Name=.*)#Name=QQ*#" "$pkgdir/usr/share/applications/qq.desktop"
 }
