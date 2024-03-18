@@ -16,7 +16,7 @@ use log::{debug, error, info};
 use nix::libc::{c_int, RTLD_LAZY};
 use nix::sys::socket;
 use nix::sys::socket::{AddressFamily, SockFlag, SockType, UnixAddr};
-use nix::unistd::getpid;
+use nix::unistd::{fork, ForkResult, getpid};
 use once_cell::sync::Lazy;
 use tokio::io::AsyncWriteExt;
 use tokio::net::UnixStream;
@@ -65,13 +65,13 @@ fn find_libc() -> Result<String> {
 }
 
 
-fn do_open(url: &str) -> Result<()> {
+fn do_open(uri: &str) -> Result<()> {
     let client = socket::socket(AddressFamily::Unix, SockType::Stream, SockFlag::empty(), None)?;
     let client_raw = client.as_raw_fd();
 
     socket::connect(client_raw, SERVER_ADDRESS.deref())?;
 
-    let url_owned = url.to_owned();
+    let url_owned = uri.to_owned();
     let future = ASYNC_RUNTIME.spawn(async move {
         let result: Result<()> = try {
             let mut stream = UnixStream::from_std(SystemUnixStream::from(client))?;
@@ -86,6 +86,8 @@ fn do_open(url: &str) -> Result<()> {
     });
 
     ASYNC_RUNTIME.block_on(future)?;
+
+    debug!("do_open finished");
 
     Ok(())
 }
@@ -118,6 +120,8 @@ fn handle_open(args: &[&str]) {
     if let Err(e) = do_open(&target) {
         error!("failed to open [{}]: {}", args.join(", "), e);
     }
+    
+    debug!("handle_open finished");
 
     exit(0);
 }
@@ -146,23 +150,29 @@ pub fn execvp(file: *const c_char, argv: *const *const c_char) -> c_int {
 
     if let Ok("xdg-open") = pathname {
         info!("xdg-open detected, redirecting...");
+        
+        if let Ok(ForkResult::Child) = unsafe { fork() } {
+            let mut args: Vec<&str> = vec![];
+            let mut ptr: *const *const c_char = argv;
+            let mut index = 0;
 
-        let mut args: Vec<&str> = vec![];
-        let mut ptr: *const *const c_char = argv;
-        let mut index = 0;
-
-        unsafe {
-            while !(*ptr).is_null() {
-                let arg = CStr::from_ptr(*ptr).to_str().expect(&format!("failed to decode argv[{index}]"));
-                args.push(arg);
-                ptr = ptr.add(1);
-                index += 1;
+            unsafe {
+                while !(*ptr).is_null() {
+                    let arg = CStr::from_ptr(*ptr).to_str().expect(&format!("failed to decode argv[{index}]"));
+                    args.push(arg);
+                    ptr = ptr.add(1);
+                    index += 1;
+                }
             }
+
+            debug!("{}", args.join(" "));
+
+            handle_open(&args);
+
+            unreachable!("function `handle_open` returned unexpectedly");
+        } else {
+            exit(0)
         }
-
-        debug!("{}", args.join(" "));
-
-        handle_open(&args);
     }
 
     real_execvp(file, argv)
