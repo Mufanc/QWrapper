@@ -22,6 +22,8 @@ else
 fi
 
 if [ -d "$LITELOADER" ]; then                                                # 支持 LiteLoaderQQNT
+    echo "Loading LiteLoaderQQNT..."
+
     mkdir -p "$LITELOADER"
     args="$args --bind $LITELOADER $LITELOADER"
 
@@ -31,7 +33,7 @@ if [ -d "$LITELOADER" ]; then                                                # �
     echo "require('$LITELOADER');" >> "$fake_entry"
     cat "$entry" >> "$fake_entry"
 
-    args="$args --tmpfs $BASE/resources/app/application"                     # 挂载一个可写的 tmpfs
+    args="$args --bind $LITELOADER/application $BASE/resources/app/application"                     # 挂载一个可写的 tmpfs
     args="$args --bind $fake_entry $entry"                                   # 挂载假入口
 fi
 
