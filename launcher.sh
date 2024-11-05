@@ -21,23 +21,31 @@ else
     args="$args --setenv LD_PRELOAD $BASE/libinject.so"
 fi
 
-if [ -d "$LITELOADER" ]; then                                                # 支持 LiteLoaderQQNT
+if [ -d "$LITELOADER" ]; then
     echo "Loading LiteLoaderQQNT..."
 
+    # 挂载 LiteLoaderQQNT 目录
     mkdir -p "$LITELOADER"
     args="$args --bind $LITELOADER $LITELOADER"
 
-    entry="$BASE/resources/app/app_launcher/index.js"
+    # 挂载 package.json
+    fake_package=$(mktemp)
+    package_json="$BASE/resources/app/package.json"
+    sed -e 's/index.js/loader_index.js/g' -e 's/application.asar/./g' "$package_json" > "$fake_package"
+    args="$args --ro-bind $fake_package $package_json"
+
+    # 挂载入口 js
+    overlay_dir="$BASE/resources/app/app_launcher"
+    args="$args --tmpfs $overlay_dir"
+    for file in "$overlay_dir"/*; do
+        args="$args --bind $file $file" 
+    done
     fake_entry=$(mktemp)
-
-    echo "require('$LITELOADER');" >> "$fake_entry"
-    cat "$entry" >> "$fake_entry"
-
-    args="$args --bind $LITELOADER/application $BASE/resources/app/application"                     # 挂载一个可写的 tmpfs
-    args="$args --bind $fake_entry $entry"                                   # 挂载假入口
+    echo "require('$LITELOADER');" > "$fake_entry"
+    args="$args --ro-bind $fake_entry $BASE/resources/app/app_launcher/loader_index.js"
 fi
 
-args="$args --chdir $HOME $BASE/main"                                        # 启动主程序
+args="$args --chdir $HOME $BASE/main"
 
 # shellcheck disable=SC2086
 exec bwrap $args
