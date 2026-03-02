@@ -2,7 +2,7 @@
 
 set -ex
 
-pacman -Syu --noconfirm --needed base-devel rustup pacman-contrib
+pacman -Syu --noconfirm --needed base-devel rustup pacman-contrib jq
 
 rustup toolchain install stable
 rustup toolchain install nightly
