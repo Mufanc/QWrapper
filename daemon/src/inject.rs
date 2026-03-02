@@ -73,12 +73,23 @@ fn do_open(uri: &str) -> Result<()> {
 
     let url_owned = uri.to_owned();
     let future = ASYNC_RUNTIME.spawn(async move {
-        let result: Result<()> = try {
-            let mut stream = UnixStream::from_std(SystemUnixStream::from(client))?;
+        let result = async {
+            // 把 nix 的 fd 变成 std 的 UnixStream
+            let std_stream = SystemUnixStream::from(client);
 
+            // tokio::net::UnixStream::from_std 需要 nonblocking
+            std_stream.set_nonblocking(true)?;
+
+            // 转成 tokio stream
+            let mut stream = UnixStream::from_std(std_stream)?;
+
+            // 写入协议数据
             stream.write_i32(Operation::OpenFileOrLink.into()).await?;
             stream.write_all(url_owned.as_bytes()).await?;
-        };
+
+            Ok::<(), anyhow::Error>(())
+        }
+        .await;
 
         if let Err(e) = result {
             error!("failed to open: {e}");
