@@ -1,12 +1,10 @@
-#![feature(try_blocks)]
-
-use std::{fs, mem};
 use std::collections::HashMap;
 use std::ffi::{c_char, CStr};
 use std::ops::Deref;
 use std::os::fd::AsRawFd;
 use std::os::unix::net::UnixStream as SystemUnixStream;
 use std::process::exit;
+use std::{fs, mem};
 
 use anyhow::Result;
 use ctor::ctor;
@@ -16,7 +14,7 @@ use log::{debug, error, info};
 use nix::libc::{c_int, RTLD_LAZY};
 use nix::sys::socket;
 use nix::sys::socket::{AddressFamily, SockFlag, SockType, UnixAddr};
-use nix::unistd::{fork, ForkResult, getpid};
+use nix::unistd::{fork, getpid, ForkResult};
 use once_cell::sync::Lazy;
 use tokio::io::AsyncWriteExt;
 use tokio::net::UnixStream;
@@ -25,8 +23,8 @@ use url::Url;
 
 use crate::configs::Operation;
 
-mod dlopt;
 mod configs;
+mod dlopt;
 
 static SERVER_ADDRESS: Lazy<UnixAddr> = Lazy::new(|| {
     let address = configs::server_address();
@@ -34,10 +32,7 @@ static SERVER_ADDRESS: Lazy<UnixAddr> = Lazy::new(|| {
     UnixAddr::new_abstract(address.as_bytes()).unwrap()
 });
 
-static ASYNC_RUNTIME: Lazy<Runtime> = Lazy::new(|| {
-    Runtime::new().unwrap()
-});
-
+static ASYNC_RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().unwrap());
 
 fn find_libc() -> Result<String> {
     const QQNT_ELF: &str = "/opt/QQ/main";
@@ -53,10 +48,10 @@ fn find_libc() -> Result<String> {
 
             if let Some(name) = elf.dynstrtab.get_at(item.d_val as usize) {
                 if !name.starts_with("libc.so") {
-                    continue
+                    continue;
                 }
 
-                return Ok(name.to_string())
+                return Ok(name.to_string());
             }
         }
     }
@@ -64,9 +59,13 @@ fn find_libc() -> Result<String> {
     anyhow::bail!("failed to find libc!")
 }
 
-
 fn do_open(uri: &str) -> Result<()> {
-    let client = socket::socket(AddressFamily::Unix, SockType::Stream, SockFlag::empty(), None)?;
+    let client = socket::socket(
+        AddressFamily::Unix,
+        SockType::Stream,
+        SockFlag::empty(),
+        None,
+    )?;
     let client_raw = client.as_raw_fd();
 
     socket::connect(client_raw, SERVER_ADDRESS.deref())?;
@@ -103,8 +102,12 @@ fn do_open(uri: &str) -> Result<()> {
     Ok(())
 }
 
-
 fn handle_open(args: &[&str]) {
+    if args.len() < 2 {
+        error!("xdg-open called without target");
+        exit(0);
+    }
+
     let target = Url::parse(args[1])
         .ok()
         .and_then(|url| {
@@ -113,7 +116,7 @@ fn handle_open(args: &[&str]) {
                     let queries: HashMap<_, _> = url.query_pairs().into_owned().collect();
                     queries.get("pfurl").or(queries.get("url")).cloned()
                 }
-                _ => Some(url.to_string())
+                _ => Some(url.to_string()),
             };
 
             if let Some(new_url) = &new_url {
@@ -126,19 +129,16 @@ fn handle_open(args: &[&str]) {
 
             new_url
         })
-        .unwrap_or(args[1].to_owned());
+        .unwrap_or_else(|| args[1].to_owned());
 
     if let Err(e) = do_open(&target) {
         error!("failed to open [{}]: {}", args.join(", "), e);
     }
-    
-    debug!("handle_open finished");
 
     exit(0);
 }
 
-
-type ExecvpFn = fn(*const c_char, *const *const c_char) -> i32;
+type ExecvpFn = unsafe extern "C" fn(*const c_char, *const *const c_char) -> c_int;
 
 #[no_mangle]
 #[allow(non_upper_case_globals)]
@@ -150,7 +150,7 @@ pub fn execvp(file: *const c_char, argv: *const *const c_char) -> c_int {
         debug!("found libc: {libc}");
 
         let handle = dlopt::dlopen(&libc, RTLD_LAZY).unwrap();
-        let execvp = dlopt::dlsym(handle, "execvp").unwrap();
+        let execvp = dlopt::dlsym(&handle, "execvp").unwrap();
 
         debug!("found execvp: {execvp:?}");
 
@@ -161,7 +161,7 @@ pub fn execvp(file: *const c_char, argv: *const *const c_char) -> c_int {
 
     if let Ok("xdg-open") = pathname {
         info!("xdg-open detected, redirecting...");
-        
+
         if let Ok(ForkResult::Child) = unsafe { fork() } {
             let mut args: Vec<&str> = vec![];
             let mut ptr: *const *const c_char = argv;
@@ -169,7 +169,9 @@ pub fn execvp(file: *const c_char, argv: *const *const c_char) -> c_int {
 
             unsafe {
                 while !(*ptr).is_null() {
-                    let arg = CStr::from_ptr(*ptr).to_str().expect(&format!("failed to decode argv[{index}]"));
+                    let arg = CStr::from_ptr(*ptr)
+                        .to_str()
+                        .expect(&format!("failed to decode argv[{index}]"));
                     args.push(arg);
                     ptr = ptr.add(1);
                     index += 1;
@@ -186,9 +188,8 @@ pub fn execvp(file: *const c_char, argv: *const *const c_char) -> c_int {
         }
     }
 
-    real_execvp(file, argv)
+    unsafe { real_execvp(file, argv) }
 }
-
 
 #[ctor]
 fn main() {

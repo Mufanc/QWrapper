@@ -7,6 +7,16 @@ use nix::libc::c_int;
 #[derive(Debug)]
 pub struct Handle(String, *mut c_void);
 
+impl Drop for Handle {
+    fn drop(&mut self) {
+        unsafe {
+            if !self.1.is_null() {
+                libc::dlclose(self.1);
+            }
+        }
+    }
+}
+
 pub fn dlopen(path: &str, flag: c_int) -> Result<Handle> {
     let filename = CString::new(path)?;
 
@@ -22,14 +32,16 @@ pub fn dlopen(path: &str, flag: c_int) -> Result<Handle> {
     }
 }
 
-pub fn dlsym(handle: Handle, symbol: &str) -> Result<*mut c_void> {
+pub fn dlsym(handle: &Handle, symbol: &str) -> Result<*mut c_void> {
     let name = CString::new(symbol)?;
 
     unsafe {
+        libc::dlerror();
         let addr = libc::dlsym(handle.1, name.as_ptr());
 
-        if addr.is_null() {
-            let error = CStr::from_ptr(libc::dlerror()).to_str()?;
+        let err = libc::dlerror();
+        if !err.is_null() {
+            let error = CStr::from_ptr(err).to_str()?;
             anyhow::bail!("failed to dlsym for `{symbol}` in {}: {error}", handle.0);
         }
 
