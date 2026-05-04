@@ -21,8 +21,22 @@ args="$args --proc /proc"
 
 # ===== Devices =====
 args="$args --dev /dev"
+
 if [ -d /dev/dri ]; then
     args="$args --dev-bind /dev/dri /dev/dri"
+fi
+
+# Mesa / DRM 需要这些来识别显卡
+if [ -d /sys/dev/char ]; then
+    args="$args --ro-bind /sys/dev/char /sys/dev/char"
+fi
+
+if [ -d /sys/devices ]; then
+    args="$args --ro-bind /sys/devices /sys/devices"
+fi
+
+if [ -d /run/udev ]; then
+    args="$args --ro-bind /run/udev /run/udev"
 fi
 
 # ===== Runtime dirs =====

@@ -20,6 +20,7 @@ optdepends=('libappindicator-gtk3')
 conflicts=('linuxqq')
 source=('$SOURCE' 'launcher.sh')
 sha256sums=()
+options=(!debug !strip)
 
 build() {
     cd "$PKGROOT/daemon"
